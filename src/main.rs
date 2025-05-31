@@ -123,6 +123,17 @@ async fn insert_records(pool: &PgPool, records: &[OptionRecord], last_updated_ti
             INSERT INTO t_options_cboe_snapshot
             (symbol, call_put, expiration, strike_price, volume, matched, routed, bid_size, bid_price, ask_size, ask_price, last_price, last_updated_time, etl_in_dt)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            ON CONFLICT (symbol, call_put, expiration, strike_price, last_updated_time)
+            DO UPDATE SET
+                volume = EXCLUDED.volume,
+                matched = EXCLUDED.matched,
+                routed = EXCLUDED.routed,
+                bid_size = EXCLUDED.bid_size,
+                bid_price = EXCLUDED.bid_price,
+                ask_size = EXCLUDED.ask_size,
+                ask_price = EXCLUDED.ask_price,
+                last_price = EXCLUDED.last_price,
+                etl_in_dt = EXCLUDED.etl_in_dt
         "#)
             .bind(&rec.symbol)
             .bind(&rec.call_put)
@@ -155,7 +166,7 @@ async fn clean_duplicate_data(pool: &PgPool) -> Result<()> {
             SELECT ctid FROM (
                 SELECT
                     ctid,
-                    ROW_NUMBER() OVER (PARTITION BY symbol, expiration, last_updated_time ORDER BY etl_in_dt DESC) AS rn
+                    ROW_NUMBER() OVER (PARTITION BY symbol, expiration,call_put,strike_price, last_updated_time ORDER BY etl_in_dt DESC) AS rn
                 FROM t_options_cboe_snapshot
             ) t
             WHERE t.rn > 1
