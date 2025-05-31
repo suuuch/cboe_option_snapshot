@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
         insert_records(&pool, &records, last_update_time).await?;
     }
 
-    clean_duplicate_data(&pool).await?;
+    // clean_duplicate_data(&pool).await?;
 
     Ok(())
 }
