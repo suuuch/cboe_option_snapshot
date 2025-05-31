@@ -54,8 +54,6 @@ async fn main() -> Result<()> {
         insert_records(&pool, &records, last_update_time).await?;
     }
 
-    // clean_duplicate_data(&pool).await?;
-
     Ok(())
 }
 
@@ -157,29 +155,5 @@ async fn insert_records(pool: &PgPool, records: &[OptionRecord], last_updated_ti
 
     tx.commit().await?;
     info!("Inserted {} records.", records.len());
-    Ok(())
-}
-
-
-async fn clean_duplicate_data(pool: &PgPool) -> Result<()> {
-    let sql = r#"
-        DELETE FROM t_options_cboe_snapshot a
-        USING (
-            SELECT ctid FROM (
-                SELECT
-                    ctid,
-                    ROW_NUMBER() OVER (PARTITION BY symbol, expiration,call_put,strike_price, last_updated_time ORDER BY etl_in_dt DESC) AS rn
-                FROM t_options_cboe_snapshot
-            ) t
-            WHERE t.rn > 1
-        ) b
-        WHERE a.ctid = b.ctid;
-    "#;
-
-    sqlx::query(sql)
-        .execute(pool)
-        .await?;
-
-    info!("Duplicate data cleaned.");
     Ok(())
 }
