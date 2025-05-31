@@ -6,6 +6,7 @@ use reqwest::Client;
 use sqlx::{PgPool, Row};
 use std::io::Cursor;
 use csv::ReaderBuilder;
+use chrono_tz::{America};
 
 const PAGE_URL: &str = "https://www.cboe.com/us/options/market_statistics/symbol_data/?mkt=cone";
 const URLS: [&str; 4] = [
@@ -116,7 +117,8 @@ async fn get_csv_content(client: &Client, url: &str) -> Result<Vec<OptionRecord>
 }
 async fn insert_records(pool: &PgPool, records: &[OptionRecord], last_updated_time: NaiveDateTime) -> Result<()> {
     let mut tx = pool.begin().await?;
-    let etl_in_dt = chrono::Utc::now().naive_utc();
+    let utc_now = chrono::Utc::now();
+    let etl_in_dt = utc_now.with_timezone(&America::New_York);
 
     for rec in records {
         sqlx::query(r#"
